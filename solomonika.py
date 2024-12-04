@@ -1,13 +1,15 @@
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, ConversationHandler, MessageHandler, filters
+from telegram import InputMediaPhoto, Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove
+from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes, ConversationHandler, \
+    MessageHandler, filters
 
 # Стадії конверсії
 DATE_START, DATE_END, GUESTS, ROOM_TYPE = range(4)
 
 app = ApplicationBuilder().token("7407148766:AAEZoEiCxU43aOPNU2VbZWI1llqN7PWkTf8").build()
 
+
 # Команда /start с приветственным сообщением и кнопками
-async def start_command(update,context):
+async def start_command(update, context):
     inline_keyboard = [
         [InlineKeyboardButton("Забронировать номер", callback_data="book")],
         [InlineKeyboardButton("Услуги", callback_data="services")],
@@ -15,22 +17,28 @@ async def start_command(update,context):
         [InlineKeyboardButton("Наш сайт", url="https://example.com")]
     ]
     markup = InlineKeyboardMarkup(inline_keyboard)
-    
+
     await update.message.reply_text(
         "Добро пожаловать в отель 'Dream Stay'! Выберите действие:",
         reply_markup=markup
     )
 
+
 # Обработчик действий с кнопок
-async def button_handler(update,context):
+async def button_handler(update, context):
     query = update.callback_query
     await query.answer()
 
     if query.data == "book":
-        await query.message.reply_text(
-            "Для бронирования номера введите дату заезда (например, 2023-12-01):"
-        )
-        return DATE_START
+        room_image_url = "FELV-cat.jpg"
+        caption = "Люкс номер. Забронюйте прямо зараз!"
+        try:
+            await query.message.reply_photo(photo=room_image_url, caption=caption)
+        except FileNotFoundError as e:
+            await query.message.reply_text(f"Помилка: файл {e.filename} не знайдено.")
+        except Exception as e:
+            await query.message.reply_text(f"Виникла помилка: {str(e)}")
+
     elif query.data == "services":
         await query.message.reply_text(
             "У нас доступны следующие услуги:\n"
@@ -46,25 +54,29 @@ async def button_handler(update,context):
             "- Адрес: ул. Мира, 10, Киев"
         )
 
+
 # Сбор данных для бронирования
-async def date_start(update,context):
+async def date_start(update, context):
     context.user_data['date_start'] = update.message.text
     await update.message.reply_text("Введите дату выезда (например, 2023-12-10):")
     return DATE_END
 
-async def date_end(update,context):
+
+async def date_end(update, context):
     context.user_data['date_end'] = update.message.text
     await update.message.reply_text("Сколько гостей будет проживать?")
     return GUESTS
 
-async def guests(update,context):
+
+async def guests(update, context):
     context.user_data['guests'] = update.message.text
     reply_keyboard = [["Стандарт", "Люкс", "Семейный"]]
     markup = ReplyKeyboardMarkup(reply_keyboard, resize_keyboard=True, one_time_keyboard=True)
     await update.message.reply_text("Выберите тип номера:", reply_markup=markup)
     return ROOM_TYPE
 
-async def room_type(update,context):
+
+async def room_type(update, context):
     context.user_data['room_type'] = update.message.text
     booking_details = (
         f"Ваши данные для бронирования:\n"
@@ -77,9 +89,12 @@ async def room_type(update,context):
     await update.message.reply_text(booking_details, reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
-async def cancel(update,context):
-    await update.message.reply_text("Бронирование отменено. Возвращайтесь, когда будете готовы!", reply_markup=ReplyKeyboardRemove())
+
+async def cancel(update, context):
+    await update.message.reply_text("Бронирование отменено. Возвращайтесь, когда будете готовы!",
+                                    reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
+
 
 # Обработчик команд
 app.add_handler(CommandHandler("start", start_command))
@@ -95,6 +110,42 @@ booking_handler = ConversationHandler(
     },
     fallbacks=[CommandHandler("cancel", cancel)],
 )
+
+
+#InputMediaPhoto
+async def send_photos(update,context):
+    # Шляхи до локальних файлів
+    photo_paths = ["FELV-cat.jpg", "FELV-cat.jpg"]
+
+    # Перевірка на існування файлів
+    try:
+        media_group = [InputMediaPhoto(open(photo, "rb")) for photo in photo_paths]
+        await update.message.reply_media_group(media_group)
+        await update.message.reply_text("Приклад")
+        '''
+        room_image_url = "FELV-cat.jpg"
+        caption = "Люкс номер. Забронюйте прямо зараз!"
+        await query.message.reply_photo(photo=room_image_url, caption=caption)
+        '''
+
+    except FileNotFoundError as e:
+        await update.message.reply_text(f"Помилка: файл {e.filename} не знайдено.")
+    except Exception as e:
+        await update.message.reply_text(f"Виникла помилка: {str(e)}")
+
+async def sales(update, context):
+    room_image_url = "FELV-cat.jpg"
+    caption = "Люкс номер. Забронюйте прямо зараз!"
+    try:
+        await update.message.reply_photo(photo=room_image_url, caption=caption)
+    except FileNotFoundError as e:
+        await update.message.reply_text(f"Помилка: файл {e.filename} не знайдено.")
+    except Exception as e:
+        await update.message.reply_text(f"Виникла помилка: {str(e)}")
+
+# Додавання обробника команди
+app.add_handler(CommandHandler("sendphotos", send_photos))
+app.add_handler(CommandHandler("sales", sales))
 
 app.add_handler(booking_handler)
 
